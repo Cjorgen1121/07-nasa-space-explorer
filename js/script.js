@@ -55,11 +55,11 @@ async function loadFallbackImages() {
   }
 
   const data = await response.json();
-  if (!Array.isArray(data.items)) {
+  if (!Array.isArray(data.collection?.items)) {
     throw new Error('NASA returned an unexpected image library response.');
   }
 
-  const fallbackImages = data.items
+  const fallbackImages = data.collection.items
     .map((item) => {
       const image = item.links?.find((link) => link.render === 'image');
       const details = item.data?.[0];
