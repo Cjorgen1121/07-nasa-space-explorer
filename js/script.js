@@ -16,7 +16,7 @@ const modalVideoLink = document.getElementById('modalVideoLink');
 setupDateInputs(startInput, endInput);
 
 const apiUrl = 'https://science.nasa.gov/wp-json/wp/v2/apod-basic';
-const nasaImagesApiUrl = 'https://images-api.nasa.gov/search';
+const nasaImagesApiUrl = 'https://science.nasa.gov/image-article/';
 const spaceFacts = [
   'A day on Venus is longer than its year.',
   'Neutron stars can spin around 600 times every second.',
