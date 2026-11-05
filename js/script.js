@@ -37,37 +37,12 @@ function escapeHtml(value) {
   }[character]));
 }
 
-function sanitizeDescription(description) {
-  const parsedDescription = document.createElement('div');
-  parsedDescription.innerHTML = description || 'No description available.';
-
-  parsedDescription.querySelectorAll('*').forEach((element) => {
-    const tagName = element.tagName.toLowerCase();
-    const allowedTags = ['a', 'br', 'em', 'strong'];
-
-    if (!allowedTags.includes(tagName)) {
-      element.replaceWith(...element.childNodes);
-      return;
-    }
-
-    const href = element.getAttribute('href');
-    [...element.attributes].forEach((attribute) => {
-      element.removeAttribute(attribute.name);
-    });
-
-    if (tagName === 'a') {
-      if (!href || !/^https?:\/\//i.test(href)) {
-        element.replaceWith(...element.childNodes);
-        return;
-      }
-
-      element.setAttribute('href', href);
-      element.setAttribute('target', '_blank');
-      element.setAttribute('rel', 'noopener noreferrer');
-    }
-  });
-
-  return parsedDescription.innerHTML;
+function getExplanationText(explanation) {
+  const explanationDocument = new DOMParser().parseFromString(
+    explanation || '',
+    'text/html'
+  );
+  return explanationDocument.body.textContent.replace(/\s+/g, ' ').trim();
 }
 
 function getImageUrl(item) {
@@ -160,7 +135,7 @@ function openItem(item) {
     : `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}">`;
   modalTitle.textContent = item.title;
   modalDate.textContent = item.date;
-  modalExplanation.innerHTML = sanitizeDescription(item.explanation);
+  modalExplanation.textContent = getExplanationText(item.explanation);
   modalVideoLink.hidden = item.media_type !== 'video';
   modalVideoLink.href = videoUrl;
   imageModal.showModal();
