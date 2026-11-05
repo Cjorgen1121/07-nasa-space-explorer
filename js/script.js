@@ -1,9 +1,119 @@
 // Find our date picker inputs on the page
 const startInput = document.getElementById('startDate');
 const endInput = document.getElementById('endDate');
+const searchButton = document.getElementById('searchButton');
+const gallery = document.getElementById('gallery');
+const resultCount = document.getElementById('resultCount');
+const spaceFact = document.getElementById('spaceFact');
+const imageModal = document.getElementById('imageModal');
+const closeModal = document.getElementById('closeModal');
+const modalMedia = document.getElementById('modalMedia');
+const modalTitle = document.getElementById('modalTitle');
+const modalDate = document.getElementById('modalDate');
+const modalExplanation = document.getElementById('modalExplanation');
+const modalVideoLink = document.getElementById('modalVideoLink');
 
-// Call the setupDateInputs function from dateRange.js
-// This sets up the date pickers to:
-// - Default to a range of 9 days (from 9 days ago to today)
-// - Restrict dates to NASA's image archive (starting from 1995)
 setupDateInputs(startInput, endInput);
+
+const apiUrl = 'https://api.nasa.gov/planetary/apod';
+const spaceFacts = [
+  'A day on Venus is longer than its year.',
+  'Neutron stars can spin around 600 times every second.',
+  'One million Earths could fit inside the Sun.',
+  'Saturn would float in water because it is less dense than water.',
+  'Light from the Sun takes about eight minutes to reach Earth.'
+];
+
+spaceFact.textContent = spaceFacts[Math.floor(Math.random() * spaceFacts.length)];
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[character]));
+}
+
+function createCard(item) {
+  const imageUrl = item.hdurl || item.url;
+  const title = escapeHtml(item.title);
+  const date = escapeHtml(item.date);
+  const media = item.media_type === 'video'
+    ? `<iframe src="${escapeHtml(item.url)}" title="${title}" loading="lazy" allowfullscreen></iframe>`
+    : `<img src="${escapeHtml(imageUrl)}" alt="${title}" loading="lazy">`;
+  const videoLink = item.media_type === 'video'
+    ? `<a class="video-link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">Open video on NASA</a>`
+    : '';
+
+  return `
+    <article class="gallery-item" data-date="${date}" tabindex="0" role="button" aria-label="View details for ${title}">
+      <div class="media-frame">${media}</div>
+      <div class="card-copy">
+        <div class="card-date">${date}</div>
+        <h3>${title}</h3>
+        ${videoLink}
+      </div>
+    </article>
+  `;
+}
+
+function openItem(item) {
+  const imageUrl = item.hdurl || item.url;
+  modalMedia.innerHTML = item.media_type === 'video'
+    ? `<iframe src="${escapeHtml(item.url)}" title="${escapeHtml(item.title)}" allowfullscreen></iframe>`
+    : `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}">`;
+  modalTitle.textContent = item.title;
+  modalDate.textContent = item.date;
+  modalExplanation.textContent = item.explanation;
+  modalVideoLink.hidden = item.media_type !== 'video';
+  modalVideoLink.href = item.url;
+  imageModal.showModal();
+}
+
+async function loadImages() {
+  searchButton.disabled = true;
+  searchButton.textContent = 'Launching...';
+  gallery.innerHTML = '<div class="status-message">🔄 Loading space photos...</div>';
+  resultCount.textContent = '';
+
+  try {
+    const response = await fetch(
+      `${apiUrl}?api_key=DEMO_KEY&start_date=${startInput.value}&end_date=${endInput.value}`
+    );
+
+    if (!response.ok) {
+      throw new Error('NASA archive is unavailable right now.');
+    }
+
+    const images = await response.json();
+    images.sort((first, second) => second.date.localeCompare(first.date));
+    gallery.innerHTML = images.map(createCard).join('');
+    resultCount.textContent = `${images.length} ${images.length === 1 ? 'discovery' : 'discoveries'}`;
+    gallery.querySelectorAll('.gallery-item').forEach((card, index) => {
+      card.addEventListener('click', (event) => {
+        if (event.target.closest('a, iframe')) return;
+        openItem(images[index]);
+      });
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openItem(images[index]);
+        }
+      });
+    });
+  } catch (error) {
+    gallery.innerHTML = `<div class="status-message error">${error.message} Please try again.</div>`;
+  } finally {
+    searchButton.disabled = false;
+    searchButton.innerHTML = 'Explore images <span aria-hidden="true">→</span>';
+  }
+}
+
+searchButton.addEventListener('click', loadImages);
+closeModal.addEventListener('click', () => imageModal.close());
+imageModal.addEventListener('click', (event) => {
+  if (event.target === imageModal) imageModal.close();
+});
+loadImages();
