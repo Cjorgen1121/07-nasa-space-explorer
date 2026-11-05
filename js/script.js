@@ -37,13 +37,8 @@ function escapeHtml(value) {
   }[character]));
 }
 
-// APOD's `url` is the exact image selected by NASA for that date.
-function getImageUrl(item) {
-  return item.url;
-}
-
 function hasUsableMedia(item) {
-  const imageUrl = getImageUrl(item);
+  const imageUrl = item.hdurl || item.url;
   const isPlaceholder = item.title === 'NASA Science'
     && imageUrl?.includes('/nasa-logo');
 
@@ -89,7 +84,7 @@ async function loadFallbackImages() {
 }
 
 function createCard(item) {
-  const imageUrl = getImageUrl(item);
+  const imageUrl = item.hdurl || item.url;
   const title = escapeHtml(item.title);
   const date = escapeHtml(item.date);
   const media = item.media_type === 'video'
@@ -112,7 +107,7 @@ function createCard(item) {
 }
 
 function openItem(item) {
-  const imageUrl = getImageUrl(item);
+  const imageUrl = item.hdurl || item.url;
   modalMedia.innerHTML = item.media_type === 'video'
     ? `<iframe src="${escapeHtml(item.url)}" title="${escapeHtml(item.title)}" allowfullscreen></iframe>`
     : `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}">`;
