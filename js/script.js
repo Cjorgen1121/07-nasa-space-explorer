@@ -16,6 +16,7 @@ const modalVideoLink = document.getElementById('modalVideoLink');
 setupDateInputs(startInput, endInput);
 
 const apiUrl = 'https://api.nasa.gov/planetary/apod';
+const nasaImagesApiUrl = 'https://images-api.nasa.gov/search';
 const spaceFacts = [
   'A day on Venus is longer than its year.',
   'Neutron stars can spin around 600 times every second.',
@@ -34,6 +35,52 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#039;'
   }[character]));
+}
+
+function hasUsableMedia(item) {
+  const imageUrl = item.hdurl || item.url;
+  const isPlaceholder = item.title === 'NASA Science'
+    && imageUrl?.includes('/nasa-logo');
+
+  return Boolean(item.date && imageUrl && !isPlaceholder);
+}
+
+async function loadFallbackImages() {
+  const response = await fetch(
+    `${nasaImagesApiUrl}?q=space&media_type=image&page_size=9`
+  );
+
+  if (!response.ok) {
+    throw new Error('NASA image services are unavailable right now.');
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data.items)) {
+    throw new Error('NASA returned an unexpected image library response.');
+  }
+
+  const fallbackImages = data.items
+    .map((item) => {
+      const image = item.links?.find((link) => link.render === 'image');
+      const details = item.data?.[0];
+
+      if (!image || !details) return null;
+
+      return {
+        date: details.date_created.split('T')[0],
+        explanation: details.description || 'NASA image from the public image library.',
+        media_type: 'image',
+        title: details.title,
+        url: image.href
+      };
+    })
+    .filter(Boolean);
+
+  if (fallbackImages.length === 0) {
+    throw new Error('NASA returned no usable space photos.');
+  }
+
+  return fallbackImages;
 }
 
 function createCard(item) {
@@ -88,18 +135,27 @@ async function loadImages() {
     }
 
     const images = await response.json();
-    images.sort((first, second) => second.date.localeCompare(first.date));
-    gallery.innerHTML = images.map(createCard).join('');
-    resultCount.textContent = `${images.length} ${images.length === 1 ? 'discovery' : 'discoveries'}`;
+    if (!Array.isArray(images)) {
+      throw new Error('NASA returned an unexpected response.');
+    }
+
+    let usableImages = images.filter(hasUsableMedia);
+    if (usableImages.length === 0) {
+      usableImages = await loadFallbackImages();
+    }
+
+    usableImages.sort((first, second) => second.date.localeCompare(first.date));
+    gallery.innerHTML = usableImages.map(createCard).join('');
+    resultCount.textContent = `${usableImages.length} ${usableImages.length === 1 ? 'discovery' : 'discoveries'}`;
     gallery.querySelectorAll('.gallery-item').forEach((card, index) => {
       card.addEventListener('click', (event) => {
         if (event.target.closest('a, iframe')) return;
-        openItem(images[index]);
+        openItem(usableImages[index]);
       });
       card.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          openItem(images[index]);
+          openItem(usableImages[index]);
         }
       });
     });
