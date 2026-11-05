@@ -15,7 +15,7 @@ const modalVideoLink = document.getElementById('modalVideoLink');
 
 setupDateInputs(startInput, endInput);
 
-const apiUrl = 'https://api.nasa.gov/planetary/apod';
+const apiUrl = 'https://science.nasa.gov/wp-json/wp/v2/apod-basic';
 const nasaImagesApiUrl = 'https://images-api.nasa.gov/search';
 const spaceFacts = [
   'A day on Venus is longer than its year.',
