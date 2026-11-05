@@ -11,6 +11,7 @@ const modalMedia = document.getElementById('modalMedia');
 const modalTitle = document.getElementById('modalTitle');
 const modalDate = document.getElementById('modalDate');
 const modalExplanation = document.getElementById('modalExplanation');
+const modalSourceLink = document.getElementById('modalSourceLink');
 const modalVideoLink = document.getElementById('modalVideoLink');
 
 setupDateInputs(startInput, endInput);
@@ -53,6 +54,10 @@ function getVideoUrl(item) {
   return item.video_url || item.url;
 }
 
+function getSourceUrl(item) {
+  return item.permalink || item.links?.find((link) => link.rel === 'alternate')?.href;
+}
+
 function canEmbedVideo(url) {
   return /(?:youtube\.com\/embed|youtube\.com\/watch|youtu\.be|player\.vimeo\.com)/i.test(url);
 }
@@ -91,7 +96,10 @@ async function loadFallbackImages() {
         explanation: details.description || 'NASA image from the public image library.',
         media_type: 'image',
         title: details.title,
-        url: image.href
+        url: image.href,
+        permalink: details.nasa_id
+          ? `https://images.nasa.gov/details/${details.nasa_id}`
+          : undefined
       };
     })
     .filter(Boolean);
@@ -130,12 +138,15 @@ function createCard(item) {
 function openItem(item) {
   const imageUrl = getImageUrl(item);
   const videoUrl = getVideoUrl(item);
+  const sourceUrl = getSourceUrl(item);
   modalMedia.innerHTML = item.media_type === 'video' && canEmbedVideo(videoUrl)
     ? `<iframe src="${escapeHtml(videoUrl)}" title="${escapeHtml(item.title)}" allowfullscreen></iframe>`
     : `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}">`;
   modalTitle.textContent = item.title;
   modalDate.textContent = item.date;
   modalExplanation.textContent = getExplanationText(item.explanation);
+  modalSourceLink.hidden = !sourceUrl;
+  modalSourceLink.href = sourceUrl || '#';
   modalVideoLink.hidden = item.media_type !== 'video';
   modalVideoLink.href = videoUrl;
   imageModal.showModal();
