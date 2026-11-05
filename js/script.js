@@ -15,7 +15,7 @@ const modalVideoLink = document.getElementById('modalVideoLink');
 
 setupDateInputs(startInput, endInput);
 
-const apiUrl = 'https://api.nasa.gov/planetary/apod';
+const apiUrl = 'https://science.nasa.gov/wp-json/wp/v2/apod-basic';
 const nasaImagesApiUrl = 'https://images-api.nasa.gov/search';
 const spaceFacts = [
   'A day on Venus is longer than its year.',
@@ -37,9 +37,16 @@ function escapeHtml(value) {
   }[character]));
 }
 
-// APOD's `url` is the exact image selected by NASA for that date.
 function getImageUrl(item) {
-  return item.url;
+  return item.hdurl || item.url;
+}
+
+function getVideoUrl(item) {
+  return item.video_url || item.url;
+}
+
+function canEmbedVideo(url) {
+  return /(?:youtube\.com\/embed|youtube\.com\/watch|youtu\.be|player\.vimeo\.com)/i.test(url);
 }
 
 function hasUsableMedia(item) {
@@ -60,11 +67,11 @@ async function loadFallbackImages() {
   }
 
   const data = await response.json();
-  if (!Array.isArray(data.items)) {
+  if (!Array.isArray(data.collection?.items)) {
     throw new Error('NASA returned an unexpected image library response.');
   }
 
-  const fallbackImages = data.items
+  const fallbackImages = data.collection.items
     .map((item) => {
       const image = item.links?.find((link) => link.render === 'image');
       const details = item.data?.[0];
@@ -92,11 +99,12 @@ function createCard(item) {
   const imageUrl = getImageUrl(item);
   const title = escapeHtml(item.title);
   const date = escapeHtml(item.date);
-  const media = item.media_type === 'video'
-    ? `<iframe src="${escapeHtml(item.url)}" title="${title}" loading="lazy" allowfullscreen></iframe>`
+  const videoUrl = getVideoUrl(item);
+  const media = item.media_type === 'video' && canEmbedVideo(videoUrl)
+    ? `<iframe src="${escapeHtml(videoUrl)}" title="${title}" loading="lazy" allowfullscreen></iframe>`
     : `<img src="${escapeHtml(imageUrl)}" alt="${title}" loading="lazy">`;
   const videoLink = item.media_type === 'video'
-    ? `<a class="video-link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">Open video on NASA</a>`
+    ? `<a class="video-link" href="${escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer">Open video on NASA</a>`
     : '';
 
   return `
@@ -113,14 +121,15 @@ function createCard(item) {
 
 function openItem(item) {
   const imageUrl = getImageUrl(item);
-  modalMedia.innerHTML = item.media_type === 'video'
-    ? `<iframe src="${escapeHtml(item.url)}" title="${escapeHtml(item.title)}" allowfullscreen></iframe>`
+  const videoUrl = getVideoUrl(item);
+  modalMedia.innerHTML = item.media_type === 'video' && canEmbedVideo(videoUrl)
+    ? `<iframe src="${escapeHtml(videoUrl)}" title="${escapeHtml(item.title)}" allowfullscreen></iframe>`
     : `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}">`;
   modalTitle.textContent = item.title;
   modalDate.textContent = item.date;
   modalExplanation.textContent = item.explanation;
   modalVideoLink.hidden = item.media_type !== 'video';
-  modalVideoLink.href = item.url;
+  modalVideoLink.href = videoUrl;
   imageModal.showModal();
 }
 
